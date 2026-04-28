@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "open-webui-admin"
+version = "0.1.0"
+description = "Open WebUI admin CLI tool"
+authors = ["Mikke"]
+classifiers = ["License :: OSI Approved :: MIT License"]
+packages = [{include = "open_webui_admin"}]
+readme = "LICENSE"
+license = "MIT"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+open-webui-admin = "open_webui_admin.cli:cli"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+httpx = "^0.27"
+click = "^8"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8"
+pytest-mock = "^3"
+pytest-cov = "^4"
