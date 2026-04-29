@@ -10,8 +10,6 @@ permissions:
   actions: read
 
 jobs:
-  tests:
-    runs-on: ubuntu-latest
   bandit:
     runs-on: ubuntu-latest
     steps:
