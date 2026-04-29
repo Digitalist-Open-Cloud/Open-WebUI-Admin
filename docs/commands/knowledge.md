@@ -2,13 +2,61 @@
 
 Manage knowledge bases in your Open WebUI instance. Knowledge bases store documents that can be used for RAG (Retrieval-Augmented Generation) with models.
 
+## Output Formats
+
+Most list commands support three output formats:
+
+### Colored Table (default)
+```bash
+open-webui-admin knowledge list
+```
+Output:
+```
+ID                                    NAME                        
+------------------------------------  ------------------------------
+9ff88eea-909a-4136-8d4e-2e1d5b0ff08a  lambiek                       
+6454895e-ac6a-49c7-ac7e-97dd4f4ce687  Dadaism                       
+1767c295-f91b-4310-925f-930ff47bc286  maintenance                   
+```
+
+### JSON (`--json`)
+```bash
+open-webui-admin knowledge list --json
+```
+Output:
+```json
+[
+  {
+    "id": "9ff88eea-909a-4136-8d4e-2e1d5b0ff08a",
+    "name": "lambiek"
+  },
+  ...
+]
+```
+
+### Simple Text (`--simple`)
+```bash
+open-webui-admin knowledge list --simple
+```
+Output:
+```
+9ff88eea-909a-4136-8d4e-2e1d5b0ff08a  lambiek
+6454895e-ac6a-49c7-ac7e-97dd4f4ce687  Dadaism
+1767c295-f91b-4310-925f-930ff47bc286  maintenance
+```
+
 ## Commands Overview
 
 | Command | Description |
 |---------|-------------|
 | `knowledge list` | List all knowledge bases |
+| `knowledge list --json` | List as JSON |
+| `knowledge list --simple` | List as simple text |
 | `knowledge show <id>` | Show knowledge base details |
+| `knowledge show <id> --json` | Show as JSON |
 | `knowledge files <id>` | List files in a knowledge base |
+| `knowledge files <id> --json` | List files as JSON |
+| `knowledge files <id> --simple` | List files as simple text |
 | `knowledge create --name <name>` | Create a new knowledge base |
 | `knowledge delete <id>` | Delete a knowledge base |
 | `knowledge add-file <id> <file-id>` | Add a file to a knowledge base |

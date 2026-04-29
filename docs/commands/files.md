@@ -2,12 +2,57 @@
 
 Manage files in your Open WebUI instance. Files can be uploaded, organized into knowledge bases, and used for RAG (Retrieval-Augmented Generation).
 
+## Output Formats
+
+Most list commands support three output formats:
+
+### Colored Table (default)
+```bash
+open-webui-admin files list
+```
+Output:
+```
+ID                                    NAME                            SIZE      
+------------------------------------  ------------------------------  ----------
+1e49c230-7f49-4562-a3ba-23cfdb88545b  Timo_Aarniala.txt               513       
+f020d137-60c0-4e07-8d38-7ceb6e53c08f  Shin_ichi_Abe.txt               1038      
+```
+
+### JSON (`--json`)
+```bash
+open-webui-admin files list --json
+```
+Output:
+```json
+[
+  {
+    "id": "1e49c230-7f49-4562-a3ba-23cfdb88545b",
+    "name": "Timo_Aarniala.txt",
+    "size": 513
+  },
+  ...
+]
+```
+
+### Simple Text (`--simple`)
+```bash
+open-webui-admin files list --simple
+```
+Output:
+```
+1e49c230-7f49-4562-a3ba-23cfdb88545b  Timo_Aarniala.txt  513
+f020d137-60c0-4e07-8d38-7ceb6e53c08f  Shin_ichi_Abe.txt  1038
+```
+
 ## Commands Overview
 
 | Command | Description |
 |---------|-------------|
 | `files list` | List all files |
+| `files list --json` | List as JSON |
+| `files list --simple` | List as simple text |
 | `files show <id>` | Show file details |
+| `files show <id> --json` | Show as JSON |
 | `files upload <path>` | Upload a file |
 | `files delete <id>` | Delete a file |
 

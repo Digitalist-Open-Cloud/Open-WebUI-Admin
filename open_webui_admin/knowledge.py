@@ -1,6 +1,7 @@
 import os
 import click
 from .client import get_client
+from .output import print_table, print_kv, print_success, print_error, die
 
 
 @click.group("knowledge")
@@ -10,7 +11,9 @@ def knowledge():
 
 
 @knowledge.command("list")
-def knowledge_list():
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+@click.option("--simple", "simple_output", is_flag=True, help="Simple output (no table)")
+def knowledge_list(json_output, simple_output):
     """List all knowledge bases."""
     with get_client() as client:
         response = client.get("/api/v1/knowledge/")
@@ -18,49 +21,65 @@ def knowledge_list():
         data = response.json()
     kbs = data if isinstance(data, list) else data.get("items", [])
     if not kbs:
-        click.echo("No knowledge bases")
+        click.echo("(none)" if not json_output else json.dumps([]))
         return
-    for kb in sorted(kbs, key=lambda k: k.get("name", "")):
-        click.echo(f"{kb.get('id', '?')}  {kb.get('name', '?')}")
+    rows = [{"id": kb.get("id", "?"), "name": kb.get("name", "?")} for kb in kbs]
+    print_table(
+        rows,
+        [("ID", "id", 36), ("NAME", "name", 30)],
+        json_output=json_output,
+        simple_output=simple_output,
+    )
 
 
 @knowledge.command("show")
 @click.argument("id")
-def knowledge_show(id):
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+def knowledge_show(id, json_output):
     """Show details of a knowledge base."""
     with get_client() as client:
         response = client.get(f"/api/v1/knowledge/{id}")
         if response.status_code == 404:
-            click.echo(f"Knowledge base '{id}' not found")
+            print_error(f"Knowledge base '{id}' not found")
             raise SystemExit(1)
         response.raise_for_status()
         kb = response.json()
-    click.echo(f"ID: {kb.get('id', '?')}")
-    click.echo(f"Name: {kb.get('name', '?')}")
-    click.echo(f"Description: {kb.get('description', '(none)')}")
+    if json_output:
+        print_json(kb)
+        return
     grants = kb.get("access_grants") or []
-    if grants:
-        click.echo(f"Grants: {len(grants)}")
+    print_kv([
+        ("ID", kb.get("id", "?")),
+        ("Name", kb.get("name", "?")),
+        ("Description", kb.get("description", "(none)")),
+        ("Grants", str(len(grants))),
+    ])
 
 
 @knowledge.command("files")
 @click.argument("id")
-def knowledge_files(id):
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+@click.option("--simple", "simple_output", is_flag=True, help="Simple output (no table)")
+def knowledge_files(id, json_output, simple_output):
     """List files in a knowledge base."""
     with get_client() as client:
         response = client.get(f"/api/v1/knowledge/{id}/files")
         if response.status_code == 404:
-            click.echo(f"Knowledge base '{id}' not found")
+            print_error(f"Knowledge base '{id}' not found")
             raise SystemExit(1)
         response.raise_for_status()
         data = response.json()
     items = data.get("items", [])
     if not items:
-        click.echo("No files in knowledge base")
+        click.echo("(none)" if not json_output else json.dumps([]))
         return
-    for f in items:
-        name = (f.get("meta") or {}).get("name") or f.get("filename", "?")
-        click.echo(f"{f.get('id', '?')}  {name}")
+    rows = [{"id": f.get("id", "?"), "name": (f.get("meta") or {}).get("name") or f.get("filename", "?")} for f in items]
+    print_table(
+        rows,
+        [("FILE_ID", "id", 36), ("NAME", "name", 30)],
+        json_output=json_output,
+        simple_output=simple_output,
+    )
 
 
 @knowledge.command("create")
@@ -72,7 +91,7 @@ def knowledge_create(name, description):
         response = client.post("/api/v1/knowledge/create", json={"name": name, "description": description})
         response.raise_for_status()
         data = response.json()
-    click.echo(f"Created: {data.get('id')}")
+    print_success(f"Created: {data.get('id')}")
 
 
 @knowledge.command("delete")
@@ -82,7 +101,7 @@ def knowledge_delete(id):
     with get_client() as client:
         response = client.delete(f"/api/v1/knowledge/{id}/delete")
         response.raise_for_status()
-    click.echo(f"Deleted: {id}")
+    print_success(f"Deleted: {id}")
 
 
 @knowledge.command("add-file")
@@ -93,7 +112,7 @@ def knowledge_add_file(id, file_id):
     with get_client() as client:
         response = client.post(f"/api/v1/knowledge/{id}/file/add", json={"file_id": file_id})
         response.raise_for_status()
-    click.echo(f"Added {file_id} to {id}")
+    print_success(f"Added {file_id} to {id}")
 
 
 @knowledge.command("remove-file")
@@ -104,7 +123,7 @@ def knowledge_remove_file(id, file_id):
     with get_client() as client:
         response = client.post(f"/api/v1/knowledge/{id}/file/remove", json={"file_id": file_id})
         response.raise_for_status()
-    click.echo(f"Removed {file_id} from {id} (file destroyed)")
+    print_success(f"Removed {file_id} from {id} (file destroyed)")
 
 
 @knowledge.command("add-folder")
@@ -118,14 +137,14 @@ def knowledge_add_folder(id, folder, recursive, pattern):
     import glob
 
     if not os.path.isdir(folder):
-        click.echo(f"'{folder}' is not a valid directory")
+        print_error(f"'{folder}' is not a valid directory")
         raise SystemExit(1)
 
     # Verify the knowledge base exists first
     with get_client() as client:
         response = client.get(f"/api/v1/knowledge/{id}")
         if response.status_code == 404:
-            click.echo(f"Knowledge base '{id}' not found")
+            print_error(f"Knowledge base '{id}' not found")
             raise SystemExit(1)
 
     # Get list of files

@@ -27,7 +27,7 @@ class TestKnowledgeList:
         mock_client.get.return_value.json.return_value = []
         result = runner.invoke(knowledge, ["list"])
         assert result.exit_code == 0
-        assert "No knowledge bases" in result.output
+        assert "(none)" in result.output
 
     def test_knowledge_list(self, runner, mock_client):
         mock_client.get.return_value.json.return_value = [

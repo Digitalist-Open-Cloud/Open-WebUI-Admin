@@ -25,7 +25,7 @@ class TestFilesList:
         mock_client.get.return_value.json.return_value = []
         result = runner.invoke(files, ["list"])
         assert result.exit_code == 0
-        assert "No files" in result.output
+        assert "(none)" in result.output
 
     def test_files_list(self, runner, mock_client):
         mock_client.get.return_value.json.return_value = [

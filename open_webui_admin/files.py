@@ -1,6 +1,7 @@
 import click
 import mimetypes
 from .client import get_client
+from .output import print_table, print_kv, print_success, die
 
 
 @click.group("files")
@@ -10,7 +11,9 @@ def files():
 
 
 @files.command("list")
-def files_list():
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+@click.option("--simple", "simple_output", is_flag=True, help="Simple output (no table)")
+def files_list(json_output, simple_output):
     """List all files."""
     with get_client() as client:
         response = client.get("/api/v1/files/")
@@ -24,33 +27,44 @@ def files_list():
     else:
         files = []
     if not files:
-        click.echo("No files")
+        click.echo("(none)" if not json_output else json.dumps([]))
         return
+    rows = []
     for f in files:
         name = (f.get("meta") or {}).get("name") or f.get("filename", "?")
         size = (f.get("meta") or {}).get("size", "?")
-        click.echo(f"{f.get('id', '?')}  {name}  ({size} bytes)")
+        rows.append({"id": f.get("id", "?"), "name": name, "size": size})
+    print_table(
+        rows,
+        [("ID", "id", 36), ("NAME", "name", 30), ("SIZE", "size", 10)],
+        json_output=json_output,
+        simple_output=simple_output,
+    )
 
 
 @files.command("show")
 @click.argument("id")
-def files_show(id):
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+def files_show(id, json_output):
     """Show file details."""
     with get_client() as client:
         response = client.get(f"/api/v1/files/{id}")
         if response.status_code == 404:
-            click.echo(f"File '{id}' not found")
-            raise SystemExit(1)
+            die(f"File '{id}' not found")
         response.raise_for_status()
         f = response.json()
-    # Handle both dict and list responses
     if isinstance(f, list):
         f = f[0] if f else {}
     meta = f.get("meta") or {}
-    click.echo(f"ID: {f.get('id', '?')}")
-    click.echo(f"Name: {meta.get('name') or f.get('filename', '?')}")
-    click.echo(f"Size: {meta.get('size', '?')} bytes")
-    click.echo(f"Type: {meta.get('content_type', '?')}")
+    if json_output:
+        print_json(f)
+        return
+    print_kv([
+        ("ID", f.get("id", "?")),
+        ("Name", meta.get("name") or f.get("filename", "?")),
+        ("Size", f"{meta.get('size', '?')} bytes"),
+        ("Type", meta.get("content_type", "?")),
+    ])
 
 
 @files.command("upload")
@@ -67,7 +81,7 @@ def files_upload(path, mime_type):
         response = client.post("/api/v1/files/", files={"file": (filename, data, mime_type)})
         response.raise_for_status()
         data = response.json()
-    click.echo(f"Uploaded: {filename} -> {data.get('id')}")
+    print_success(f"Uploaded: {filename} -> {data.get('id')}")
 
 
 @files.command("delete")
@@ -77,4 +91,4 @@ def files_delete(id):
     with get_client() as client:
         response = client.delete(f"/api/v1/files/{id}")
         response.raise_for_status()
-    click.echo(f"Deleted: {id}")
+    print_success(f"Deleted: {id}")
