@@ -1,0 +1,36 @@
+site_name: Open WebUI Admin
+site_description: CLI tool for managing Open WebUI instances
+site_url: https://github.com/anomalyco/openwebui-models
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Commands:
+      - Models: commands/models.md
+      - Connections: commands/connections.md
+      - Config: commands/config.md
+      - Users: commands/users.md
+      - Images: commands/images.md
+      - Audio: commands/audio.md
+      - Banners: commands/banners.md
+  - Development: development.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences

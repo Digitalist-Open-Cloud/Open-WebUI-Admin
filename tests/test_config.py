@@ -17,22 +17,6 @@ def runner():
 
 
 class TestConfigGet:
-    def test_config_get_default(self, runner, mock_env):
-        """Test config get without options fetches from /api/v1/configs/export."""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"general": {"default_models": ["gpt-4o"]}}
-        mock_response.raise_for_status = MagicMock()
-
-        with patch("open_webui_admin.config.get_client") as mock_get_client:
-            mock_client = MagicMock()
-            mock_client.get.return_value = mock_response
-            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
-            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
-
-            result = runner.invoke(config, ["get"])
-            assert "default_models" in result.output
-            assert result.exit_code == 0
-
     def test_config_get_openai(self, runner, mock_env):
         """Test config get --name openai shows OpenAI connections."""
         mock_openai_response = MagicMock()
@@ -101,10 +85,12 @@ class TestConfigGet:
             assert "ENABLE_OLLAMA_API" in result.output
             assert result.exit_code == 0
 
-    def test_config_get_json(self, runner, mock_env):
-        """Test config get --json fetches from /api/v1/configs/export."""
+
+class TestConfigExport:
+    def test_config_export(self, runner, mock_env):
+        """Test config export fetches from /api/v1/configs/export."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {"OPENAI_API_BASE_URLS": ["http://test"]}
+        mock_response.json.return_value = {"general": {"default_models": ["gpt-4o"]}, "audio": {}}
         mock_response.raise_for_status = MagicMock()
 
         with patch("open_webui_admin.config.get_client") as mock_get_client:
@@ -113,6 +99,6 @@ class TestConfigGet:
             mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
             mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
 
-            result = runner.invoke(config, ["get", "--json"])
-            assert "OPENAI_API_BASE_URLS" in result.output
+            result = runner.invoke(config, ["export"])
+            assert "default_models" in result.output
             assert result.exit_code == 0

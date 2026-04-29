@@ -6,6 +6,7 @@ from .images import images
 from .audio import audio
 from .config import config
 from .connections import connections
+from .users import users
 
 
 @click.group()
@@ -21,6 +22,7 @@ cli.add_command(images)
 cli.add_command(audio)
 cli.add_command(config)
 cli.add_command(connections)
+cli.add_command(users)
 
 
 if __name__ == "__main__":

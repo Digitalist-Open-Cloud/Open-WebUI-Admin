@@ -19,19 +19,19 @@ def config_get(name, json_output):
             response = client.get("/openai/config")
             response.raise_for_status()
             data = response.json()
-            
+
             if json_output:
                 click.echo(json.dumps(data, indent=2))
             else:
                 urls = data.get("OPENAI_API_BASE_URLS", [])
                 keys = data.get("OPENAI_API_KEYS", [])
-                
+
                 click.echo("=== OpenAI Connections ===")
                 for i, url in enumerate(urls):
                     key_display = keys[i] if i < len(keys) and keys[i] else "(none)"
                     click.echo(f"[{i}] {url}")
                     click.echo(f"    Key: {key_display}")
-                
+
                 click.echo("\n=== Ollama Connections ===")
                 ollama_response = client.get("/ollama/config")
                 if ollama_response.status_code == 200:
@@ -45,15 +45,17 @@ def config_get(name, json_output):
             response = client.get("/ollama/config")
             response.raise_for_status()
             data = response.json()
-            
+
             if json_output:
                 click.echo(json.dumps(data, indent=2))
             else:
                 click.echo("=== Ollama Config ===")
                 click.echo(json.dumps(data, indent=2))
-        else:
-            response = client.get("/api/v1/configs/export")
-            response.raise_for_status()
-            data = response.json()
-            
-            click.echo(json.dumps(data, indent=2))
+@config.command("export")
+def config_export():
+    """Export all config in json"""
+    with get_client() as client:
+        response = client.get("/api/v1/configs/export")
+        response.raise_for_status()
+        data = response.json()
+        click.echo(json.dumps(data, indent=2))

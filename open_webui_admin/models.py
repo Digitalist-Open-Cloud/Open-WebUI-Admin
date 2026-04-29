@@ -156,19 +156,85 @@ def models_list(verbose):
                 click.echo(m)
 
 
-@models.command("custom")
-def models_custom():
+@models.group("custom")
+def custom():
+    """Manage custom models."""
+    pass
+
+
+@custom.command("list")
+@click.option("--name", help="Show details for a specific custom model")
+def custom_list(name):
     """List custom models."""
     with get_client() as client:
-        response = client.get("/api/v1/models")
+        response = client.get("/api/v1/models/list")
         response.raise_for_status()
         data = response.json()
-        custom_models = [m.get("id", "") for m in data.get("data", []) if m.get("preset")]
-        if custom_models:
-            for m in sorted(custom_models):
-                click.echo(m)
+        custom_models = data.get("items", [])
+        if name:
+            model = next((m for m in custom_models if m.get("id") == name), None)
+            if model:
+                click.echo(json.dumps(model, indent=2))
+            else:
+                click.echo(f"Model '{name}' not found")
+                raise SystemExit(1)
+        elif custom_models:
+            for m in sorted(custom_models, key=lambda x: x.get("id", "")):
+                model_id = m.get("id", "")
+                base_model_id = m.get("base_model_id", "")
+                if base_model_id:
+                    click.echo(f"{model_id} (base: {base_model_id})")
+                else:
+                    click.echo(model_id)
         else:
             click.echo("No custom models")
+
+
+@custom.command("verify")
+@click.option("--name", help="Custom model name to verify")
+@click.option("--all", "all_models", is_flag=True, help="Verify all custom models")
+@click.option("--verbose", "-v", is_flag=True, help="Show provider info")
+@click.option("--debug", is_flag=True, help="Debug output")
+def custom_verify(name, all_models, verbose, debug):
+    """Verify custom models work by sending test requests."""
+    with get_client() as client:
+        response = client.get("/api/v1/models/list")
+        response.raise_for_status()
+        data = response.json()
+        custom_models = [m.get("id", "") for m in data.get("items", [])]
+
+        if all_models:
+            count = len(custom_models)
+            click.echo(f"Verifying {count} custom models...\n")
+            results = {}
+            for model in custom_models:
+                try:
+                    endpoint, status = verify_model(client, model, debug)
+                    if status == "chat":
+                        if verbose:
+                            click.echo(f"[OK] {model}")
+                        else:
+                            click.echo(f"[OK] {model}")
+                        results[model] = endpoint
+                    elif status.startswith("FAIL:"):
+                        failed_msg = status[5:]
+                        click.echo(f"[FAIL] {model} | {failed_msg}")
+                        results[model] = failed_msg
+                except httpx.HTTPStatusError as e:
+                    click.echo(f"[ERROR] {model} | {e.response.status_code}")
+                    results[model] = f"ERROR-{e.response.status_code}"
+                except httpx.ConnectError:
+                    click.echo(f"[ERROR] {model} | connection")
+                    results[model] = "ERROR"
+            click.echo(f"\n{count} custom models verified")
+        elif name:
+            endpoint, status = verify_model(client, name, debug)
+            if status == "chat":
+                click.echo(f"Model '{name}' is working")
+            elif status.startswith("FAIL:"):
+                click.echo(f"Model '{name}' is NOT working: {status[5:]}")
+        else:
+            click.echo("Use --name <model> or --all")
 
 
 @models.command("check")
@@ -212,13 +278,13 @@ def models_check(name, verbose):
 
 @models.command("verify")
 @click.option("--name", help="Model name to verify")
-@click.option("--all", is_flag=True, help="Verify all available models")
+@click.option("--all", "all_models", is_flag=True, help="Verify all available models")
 @click.option("--verbose", "-v", is_flag=True, help="Show provider info")
 @click.option("--debug", is_flag=True, help="Debug output")
-def models_verify(name, all, verbose, debug):
+def models_verify(name, all_models, verbose, debug):
     """Verify a model works by sending a test request."""
     with get_client() as client:
-        if all:
+        if all_models:
             models_response = client.get("/openai/models")
             models_response.raise_for_status()
             models_data = models_response.json()
