@@ -6,8 +6,8 @@ Open WebUI Admin requires two environment variables to connect to your Open WebU
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `OPENWEBUI_URL` | Base URL of Open WebUI instance | `https://cloud.open-webui.example.com` |
-| `OPENWEBUI_TOKEN` | Authentication token | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `OPENWEBUI_URL` | Base URL of Open WebUI instance | `https://open-webui.example.com` |
+| `OPENWEBUI_TOKEN` | Authentication token | `sadad4354JIUzI1NiIsfff6IkpXVCJ9...` |
 
 ## Setting Environment Variables
 

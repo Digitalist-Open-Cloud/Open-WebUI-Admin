@@ -61,7 +61,7 @@ pip install dist/open_webui_admin-*.whl
 ## Configuration
 
 Set environment variables:
-- `OPENWEBUI_URL` - Base URL of Open WebUI instance (e.g., `https://cloud.open-webui.example.com`)
+- `OPENWEBUI_URL` - Base URL of Open WebUI instance (e.g., `https://open-webui.example.com`)
 - `OPENWEBUI_TOKEN` - Authentication token (from Account settings)
 
 ## Commands
