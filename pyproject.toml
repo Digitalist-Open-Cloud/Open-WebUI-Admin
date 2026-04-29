@@ -16,7 +16,7 @@ build-backend = "poetry.core.masonry.api"
 open-webui-admin = "open_webui_admin.cli:cli"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 httpx = "^0.28.1"
 click = "^8.3.3"
 
