@@ -119,12 +119,6 @@ Get full config:
 open-webui-admin config get
 ```
 
-Get specific config section:
-
-```bash
-open-webui-admin config get models
-```
-
 ### images
 
 List available image models:
@@ -161,7 +155,7 @@ Set a banner:
 open-webui-admin banners set --type Warning --title "System Update" --content "Maintenance scheduled"
 ```
 
-Clear all banners:
+Clear banner:
 
 ```bash
 open-webui-admin banners clear
