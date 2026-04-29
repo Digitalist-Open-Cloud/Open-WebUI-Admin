@@ -1,6 +1,6 @@
 # Open WebUI Admin
 
-![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue) [![Tests & Coverage](https://github.com/Digitalist-Open-Cloud/Open-WebUI-Admin/actions/workflows/tests.yaml/badge.svg)](https://github.com/Digitalist-Open-Cloud/Open-WebUI-Admin/actions/workflows/tests.yaml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue) [![Tests & Coverage](https://github.com/Digitalist-Open-Cloud/Open-WebUI-Admin/actions/workflows/tests.yaml/badge.svg)](https://github.com/Digitalist-Open-Cloud/Open-WebUI-Admin/actions/workflows/tests.yaml) [![Security](https://github.com/Digitalist-Open-Cloud/Open-WebUI-Admin/actions/workflows/security.yaml/badge.svg)](https://github.com/Digitalist-Open-Cloud/Open-WebUI-Admin/actions/workflows/security.yaml)
 
 CLI tool for managing Open WebUI instances.
 
