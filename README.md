@@ -9,6 +9,8 @@ Very much a work in progress, and everyone is welcome to contribute.
 Idea around this module is to use the existing API to simplify common tasks, checks etc.
 So you need to able to use the API and have an API key.
 
+Focus on this tool is verification.
+
 ## Commands Overview
 
 | Command | Description |
@@ -36,6 +38,18 @@ So you need to able to use the API and have an API key.
 | `users get --all --json` | List all users in JSON format |
 | `users get --include-email <regex>` | Include users matching email pattern |
 | `users get --exclude-email <regex>` | Exclude users matching email pattern |
+| `knowledge list` | List all knowledge bases |
+| `knowledge show <id>` | Show knowledge base details |
+| `knowledge files <id>` | List files in a knowledge base |
+| `knowledge create --name <name>` | Create a new knowledge base |
+| `knowledge delete <id>` | Delete a knowledge base |
+| `knowledge add-file <id> <file-id>` | Add file to knowledge base |
+| `knowledge remove-file <id> <file-id>` | Remove file from knowledge base |
+| `knowledge add-folder <id> <folder>` | Upload all files from folder to knowledge base |
+| `files list` | List all files |
+| `files show <id>` | Show file details |
+| `files upload <path>` | Upload a file |
+| `files delete <id>` | Delete a file |
 | `images list` | List image models |
 | `audio models` | List audio models |
 | `audio voices` | List available voices |
@@ -252,13 +266,64 @@ open-webui-admin users get --all --exclude-email "@spam.com"
 ```
 
 ### images
-
 List available image models:
-
 ```bash
 open-webui-admin images list
 ```
-
+### knowledge
+List all knowledge bases:
+```bash
+open-webui-admin knowledge list
+```
+Show knowledge base details:
+```bash
+open-webui-admin knowledge show <id>
+```
+List files in a knowledge base:
+```bash
+open-webui-admin knowledge files <id>
+```
+Create a new knowledge base:
+```bash
+open-webui-admin knowledge create --name "My KB" --description "Optional desc"
+```
+Delete a knowledge base:
+```bash
+open-webui-admin knowledge delete <id>
+```
+Add a file to a knowledge base:
+```bash
+open-webui-admin knowledge add-file <id> <file-id>
+```
+Remove a file from a knowledge base (destroys the file):
+```bash
+open-webui-admin knowledge remove-file <id> <file-id>
+```
+Add all files from a local folder to a knowledge base (uploads + adds):
+```bash
+open-webui-admin knowledge add-folder <id> /path/to/folder
+# With pattern matching (only PDFs)
+open-webui-admin knowledge add-folder <id> /path/to/folder --pattern "*.pdf"
+# Recursively upload from subfolders
+open-webui-admin knowledge add-folder <id> /path/to/folder --recursive
+```
+### files
+List all files:
+```bash
+open-webui-admin files list
+```
+Show file details:
+```bash
+open-webui-admin files show <id>
+```
+Upload a file:
+```bash
+open-webui-admin files upload /path/to/file.pdf
+```
+Delete a file:
+```bash
+open-webui-admin files delete <id>
+```
 ### audio
 
 List available audio models:

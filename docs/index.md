@@ -47,6 +47,18 @@ open-webui-admin models list
 | `users get --all --json` | List all users in JSON format |
 | `users get --include-email <regex>` | Include users matching email pattern |
 | `users get --exclude-email <regex>` | Exclude users matching email pattern |
+| `knowledge list` | List all knowledge bases |
+| `knowledge show <id>` | Show knowledge base details |
+| `knowledge files <id>` | List files in a knowledge base |
+| `knowledge create --name <name>` | Create a new knowledge base |
+| `knowledge delete <id>` | Delete a knowledge base |
+| `knowledge add-file <id> <file-id>` | Add file to knowledge base |
+| `knowledge remove-file <id> <file-id>` | Remove file from knowledge base |
+| `knowledge add-folder <id> <folder>` | Upload all files from folder to KB |
+| `files list` | List all files |
+| `files show <id>` | Show file details |
+| `files upload <path>` | Upload a file |
+| `files delete <id>` | Delete a file |
 | `images list` | List image models |
 | `audio models` | List audio models |
 | `audio voices` | List available voices |

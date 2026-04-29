@@ -7,6 +7,8 @@ from .audio import audio
 from .config import config
 from .connections import connections
 from .users import users
+from .knowledge import knowledge
+from .files import files
 
 
 @click.group()
@@ -23,6 +25,8 @@ cli.add_command(audio)
 cli.add_command(config)
 cli.add_command(connections)
 cli.add_command(users)
+cli.add_command(knowledge)
+cli.add_command(files)
 
 
 if __name__ == "__main__":
