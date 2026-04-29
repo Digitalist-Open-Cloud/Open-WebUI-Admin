@@ -340,20 +340,6 @@ user_id | name | email | role
 - `server_error` - Upstream provider error (500)
 - `timeout` - Request timed out
 
-## Project Structure
-
-```
-open_webui_admin/
-├── cli.py          # Main entry point, registers command groups
-├── client.py       # HTTP client factory (get_client)
-├── models.py       # Models commands (list, custom, check, verify)
-├── banners.py      # Banners commands (get, clear, set)
-├── images.py       # Images commands (list)
-├── audio.py        # Audio commands (models, voices)
-├── config.py       # Config commands (get, export)
-├── connections.py  # Connections commands (verify)
-└── users.py       # Users commands (get)
-```
 
 ## Development
 
