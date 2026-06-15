@@ -916,5 +916,9 @@ class TestModelsVerify:
 
     def test_models_verify_no_name_or_all(self, runner, mock_env):
         """models verify without --name or --all."""
-        result = runner.invoke(models, ["verify"])
-        assert "--name" in result.output or "--all" in result.output
+        with patch("open_webui_admin.models.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+            result = runner.invoke(models, ["verify"])
+            assert "--name" in result.output or "--all" in result.output
