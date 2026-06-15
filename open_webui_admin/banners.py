@@ -2,6 +2,7 @@ import time
 import uuid
 import click
 from .client import get_client
+from .output import print_table, print_success, print_error
 
 
 @click.group("banners")
@@ -11,17 +12,33 @@ def banners():
 
 
 @banners.command("get")
-def banners_get():
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+@click.option("--simple", "simple_output", is_flag=True, help="Simple output (no table)")
+def banners_get(json_output, simple_output):
     """Get banners."""
     with get_client() as client:
         response = client.get("/api/v1/configs/banners")
         response.raise_for_status()
         data = response.json()
-        if not data:
-            click.echo("No banners")
+    if not data:
+        if json_output:
+            print_json([])
         else:
-            for banner in data:
-                click.echo(f"[{banner.get('type')}] {banner.get('title')}: {banner.get('content')}")
+            click.echo("No banners")
+        return
+    if json_output:
+        print_json(data)
+    elif simple_output:
+        for banner in data:
+            click.echo(f"[{banner.get('type')}] {banner.get('title')}: {banner.get('content')}")
+    else:
+        rows = [{"type": b.get("type", "?"), "title": b.get("title", "?"), "content": b.get("content", "?")} for b in data]
+        print_table(
+            rows,
+            [("TYPE", "type", 10), ("TITLE", "title", 20), ("CONTENT", "content", 50)],
+            json_output=False,
+            simple_output=False,
+        )
 
 
 @banners.command("clear")
@@ -33,7 +50,7 @@ def banners_clear():
             json={"banners": []},
         )
         response.raise_for_status()
-        click.echo("All banners deleted successfully")
+    print_success("All banners deleted successfully")
 
 
 @banners.command("set")
@@ -49,4 +66,4 @@ def banners_set(type, title, content, dismissible):
             json={"banners": [{"id": str(uuid.uuid4()), "type": type, "title": title, "content": content, "dismissible": dismissible, "timestamp": int(time.time())}]},
         )
         response.raise_for_status()
-        click.echo("Banner set successfully")
+    print_success("Banner set successfully")

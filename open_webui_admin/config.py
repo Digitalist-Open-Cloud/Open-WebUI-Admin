@@ -1,6 +1,7 @@
 import json
 import click
 from .client import get_client
+from .output import print_json, print_success
 
 
 @click.group("config")
@@ -21,7 +22,7 @@ def config_get(name, json_output):
             data = response.json()
 
             if json_output:
-                click.echo(json.dumps(data, indent=2))
+                print_json(data)
             else:
                 urls = data.get("OPENAI_API_BASE_URLS", [])
                 keys = data.get("OPENAI_API_KEYS", [])
@@ -47,15 +48,21 @@ def config_get(name, json_output):
             data = response.json()
 
             if json_output:
-                click.echo(json.dumps(data, indent=2))
+                print_json(data)
             else:
                 click.echo("=== Ollama Config ===")
                 click.echo(json.dumps(data, indent=2))
+
+
 @config.command("export")
-def config_export():
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+def config_export(json_output):
     """Export all config in json"""
     with get_client() as client:
         response = client.get("/api/v1/configs/export")
         response.raise_for_status()
         data = response.json()
+    if json_output:
+        print_json(data)
+    else:
         click.echo(json.dumps(data, indent=2))

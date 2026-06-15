@@ -9,6 +9,7 @@ from .connections import connections
 from .users import users
 from .knowledge import knowledge
 from .files import files
+from .tika import tika
 
 
 @click.group()
@@ -27,6 +28,7 @@ cli.add_command(connections)
 cli.add_command(users)
 cli.add_command(knowledge)
 cli.add_command(files)
+cli.add_command(tika)
 
 
 if __name__ == "__main__":

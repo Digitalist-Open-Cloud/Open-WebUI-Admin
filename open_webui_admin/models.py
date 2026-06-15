@@ -2,11 +2,11 @@ import json
 import click
 import httpx
 from .client import get_client
+from .output import print_table, print_kv, print_json, print_success, print_error, die
 
 
-def verify_model(client, model, debug=False):
-    endpoint = "/openai/chat/completions"
-    payload = {"model": model, "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5}
+def _verify_request(client, endpoint, payload, debug=False):
+    """Send a verification request and return (endpoint, status)."""
     try:
         response = client.post(endpoint, json=payload, timeout=60.0)
         if response.status_code == 200:
@@ -82,6 +82,23 @@ def verify_model(client, model, debug=False):
     return None, "FAIL"
 
 
+def verify_model(client, model, debug=False):
+    endpoint = "/openai/chat/completions"
+    payload = {"model": model, "messages": [{"role": "user", "content": "Hi"}], "max_tokens": 5}
+    result = _verify_request(client, endpoint, payload, debug)
+
+    if result[0] is None:
+        error_msg = result[1] or ""
+        if "max_tokens" in error_msg and "max_completion_tokens" in error_msg:
+            if debug:
+                click.echo(f"DEBUG: Retrying with max_completion_tokens for model '{model}'")
+            payload.pop("max_tokens", None)
+            payload["max_completion_tokens"] = 5
+            result = _verify_request(client, endpoint, payload, debug)
+
+    return result
+
+
 def get_provider(model_id, url_display):
     if model_id.startswith("anthropic."):
         return "anthropic"
@@ -122,7 +139,9 @@ def models():
 
 @models.command("list")
 @click.option("--verbose", "-v", is_flag=True, help="Show provider info")
-def models_list(verbose):
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+@click.option("--simple", "simple_output", is_flag=True, help="Simple output (no table)")
+def models_list(verbose, json_output, simple_output):
     """List all available models."""
     with get_client() as client:
         response = client.get("/openai/models")
@@ -142,6 +161,7 @@ def models_list(verbose):
                 urls = config.get("OPENAI_API_BASE_URLS", [])
             else:
                 urls = []
+            rows = []
             for model in sorted(all_models, key=lambda m: m.get("id", "")):
                 model_id = model.get("id", "")
                 owned_by = model.get("owned_by", "")
@@ -150,10 +170,21 @@ def models_list(verbose):
                 url_idx_val = int(url_idx) if url_idx else 0
                 url_display = urls[url_idx_val] if url_idx_val < len(urls) else ""
                 provider = get_provider(model_id, url_display)
-                click.echo(f"{model_id} | {provider} | {connection_type} | {url_idx} | {url_display}")
+                rows.append({"id": model_id, "provider": provider, "type": connection_type, "urlIdx": url_idx, "url": url_display})
+            print_table(
+                rows,
+                [("ID", "id", 20), ("PROVIDER", "provider", 12), ("TYPE", "type", 10), ("URL_IDX", "urlIdx", 8), ("URL", "url", 40)],
+                json_output=json_output,
+                simple_output=simple_output,
+            )
         else:
-            for m in sorted([model.get("id", "") for model in all_models]):
-                click.echo(m)
+            rows = [{"id": m.get("id", "")} for m in sorted(all_models, key=lambda m: m.get("id", ""))]
+            print_table(
+                rows,
+                [("ID", "id", 20)],
+                json_output=json_output,
+                simple_output=simple_output,
+            )
 
 
 @models.group("custom")
@@ -164,30 +195,54 @@ def custom():
 
 @custom.command("list")
 @click.option("--name", help="Show details for a specific custom model")
-def custom_list(name):
+@click.option("--json", "json_output", is_flag=True, help="Output as JSON")
+@click.option("--simple", "simple_output", is_flag=True, help="Simple output (no table)")
+def custom_list(name, json_output, simple_output):
     """List custom models."""
     with get_client() as client:
-        response = client.get("/api/v1/models/list")
-        response.raise_for_status()
-        data = response.json()
-        custom_models = data.get("items", [])
+        all_custom_models = []
+        page = 1
+        while True:
+            response = client.get("/api/v1/models/list", params={"page": page})
+            response.raise_for_status()
+            data = response.json()
+            items = data.get("items", [])
+            if not items:
+                break
+            all_custom_models.extend(items)
+            total = data.get("total", 0)
+            if len(all_custom_models) >= total:
+                break
+            page += 1
+
+        custom_models = all_custom_models
         if name:
             model = next((m for m in custom_models if m.get("id") == name), None)
             if model:
-                click.echo(json.dumps(model, indent=2))
+                if json_output:
+                    print_json(model)
+                else:
+                    click.echo(json.dumps(model, indent=2))
             else:
-                click.echo(f"Model '{name}' not found")
+                print_error(f"Model '{name}' not found")
                 raise SystemExit(1)
         elif custom_models:
+            rows = []
             for m in sorted(custom_models, key=lambda x: x.get("id", "")):
                 model_id = m.get("id", "")
                 base_model_id = m.get("base_model_id", "")
-                if base_model_id:
-                    click.echo(f"{model_id} (base: {base_model_id})")
-                else:
-                    click.echo(model_id)
+                rows.append({"id": model_id, "base": base_model_id})
+            print_table(
+                rows,
+                [("ID", "id", 20), ("BASE", "base", 20)],
+                json_output=json_output,
+                simple_output=simple_output,
+            )
         else:
-            click.echo("No custom models")
+            if json_output:
+                print_json([])
+            else:
+                click.echo("No custom models")
 
 
 @custom.command("verify")
@@ -198,10 +253,22 @@ def custom_list(name):
 def custom_verify(name, all_models, verbose, debug):
     """Verify custom models work by sending test requests."""
     with get_client() as client:
-        response = client.get("/api/v1/models/list")
-        response.raise_for_status()
-        data = response.json()
-        custom_models = [m.get("id", "") for m in data.get("items", [])]
+        all_custom_models = []
+        page = 1
+        while True:
+            response = client.get("/api/v1/models/list", params={"page": page})
+            response.raise_for_status()
+            data = response.json()
+            items = data.get("items", [])
+            if not items:
+                break
+            all_custom_models.extend(items)
+            total = data.get("total", 0)
+            if len(all_custom_models) >= total:
+                break
+            page += 1
+
+        custom_models = [m.get("id", "") for m in all_custom_models]
 
         if all_models:
             count = len(custom_models)
@@ -258,7 +325,7 @@ def models_check(name, verbose):
         name = name.replace(":latest", "")
         if name in available_models:
             model_data = available_models[name]
-            click.echo(f"Model '{name}' is valid")
+            print_success(f"Model '{name}' is valid")
             if verbose:
                 url_idx = model_data.get("urlIdx", "")
                 config_response = client.get("/openai/config")
@@ -272,7 +339,7 @@ def models_check(name, verbose):
                 click.echo(f"  Provider: {provider}")
                 click.echo(f"  URL: {url_display}")
         else:
-            click.echo(f"Model '{name}' is NOT valid")
+            print_error(f"Model '{name}' is NOT valid")
             raise SystemExit(1)
 
 

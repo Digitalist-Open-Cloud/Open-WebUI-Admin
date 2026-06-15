@@ -108,8 +108,9 @@ class TestModelsCustom:
         mock_response.json.return_value = {
             "items": [
                 {"id": "dada", "base_model_id": "gpt-4o"},
-                {"id": "test-model", "base_model_id": ""}
-            ]
+                {"id": "test-model", "base_model_id": "claude-3"}
+            ],
+            "total": 2
         }
         mock_response.raise_for_status = MagicMock()
 
@@ -120,9 +121,32 @@ class TestModelsCustom:
             mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
 
             result = runner.invoke(models, ["custom", "list"])
-            assert "dada (base: gpt-4o)" in result.output
-            assert "test-model" in result.output
             assert result.exit_code == 0
+            assert "dada" in result.output
+            assert "gpt-4o" in result.output
+
+    def test_custom_list_with_name(self, runner, mock_env):
+        """Test models custom list --name shows full JSON."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "items": [
+                {"id": "dada", "base_model_id": "gpt-4o", "name": "Dada", "params": {"system": "You are dada"}}
+            ],
+            "total": 1
+        }
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("open_webui_admin.models.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.return_value = mock_response
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(models, ["custom", "list"])
+            assert result.exit_code == 0
+            assert "dada" in result.output
+            assert "gpt-4o" in result.output
 
     def test_custom_list_with_name(self, runner, mock_env):
         """Test models custom list --name shows full JSON."""
@@ -150,7 +174,7 @@ class TestModelsCustom:
         """Test models custom list --name with non-existent model."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"items": []}
+        mock_response.json.return_value = {"items": [], "total": 0}
         mock_response.raise_for_status = MagicMock()
 
         with patch("open_webui_admin.models.get_client") as mock_get_client:
@@ -167,7 +191,7 @@ class TestModelsCustom:
         """Test models custom list with no custom models."""
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"items": []}
+        mock_response.json.return_value = {"items": [], "total": 0}
         mock_response.raise_for_status = MagicMock()
 
         with patch("open_webui_admin.models.get_client") as mock_get_client:
@@ -184,7 +208,7 @@ class TestModelsCustom:
         """Test models custom verify --all."""
         mock_list_response = MagicMock()
         mock_list_response.status_code = 200
-        mock_list_response.json.return_value = {"items": [{"id": "dada"}, {"id": "test-model"}]}
+        mock_list_response.json.return_value = {"items": [{"id": "dada"}, {"id": "test-model"}], "total": 2}
         mock_list_response.raise_for_status = MagicMock()
 
         mock_verify_response = MagicMock()
@@ -203,14 +227,99 @@ class TestModelsCustom:
             assert "[OK]" in result.output
             assert result.exit_code == 0
 
+    def test_custom_verify_all_retry_max_completion_tokens(self, runner, mock_env):
+        """Test retry with max_completion_tokens on max_tokens error."""
+        mock_list_response = MagicMock()
+        mock_list_response.status_code = 200
+        mock_list_response.json.return_value = {"items": [{"id": "chatgpt-53-fast"}], "total": 1}
+        mock_list_response.raise_for_status = MagicMock()
+
+        mock_fail_response = MagicMock()
+        mock_fail_response.status_code = 400
+        mock_fail_response.text = '{"error": {"message": "Unsupported parameter: \'max_tokens\' is not supported with this model. Use \'max_completion_tokens\' instead."}}'
+
+        mock_success_response = MagicMock()
+        mock_success_response.status_code = 200
+        mock_success_response.text = '{"choices": [{"message": {"content": "Hi"}}]}'
+
+        with patch("open_webui_admin.models.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.return_value = mock_list_response
+            mock_client.post.side_effect = [mock_fail_response, mock_success_response]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(models, ["custom", "verify", "--all", "-v"])
+            assert "[OK] chatgpt-53-fast" in result.output
+            assert result.exit_code == 0
+
+    def test_custom_verify_all_retry_max_completion_tokens_fail(self, runner, mock_env):
+        """Test retry with max_completion_tokens still fails."""
+        mock_list_response = MagicMock()
+        mock_list_response.status_code = 200
+        mock_list_response.json.return_value = {"items": [{"id": "chatgpt-53-fast"}], "total": 1}
+        mock_list_response.raise_for_status = MagicMock()
+
+        mock_fail_response1 = MagicMock()
+        mock_fail_response1.status_code = 400
+        mock_fail_response1.text = '{"error": {"message": "Unsupported parameter: \'max_tokens\' is not supported with this model. Use \'max_completion_tokens\' instead."}}'
+
+        mock_fail_response2 = MagicMock()
+        mock_fail_response2.status_code = 400
+        mock_fail_response2.text = '{"error": {"message": "Model unavailable"}}'
+
+        with patch("open_webui_admin.models.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.return_value = mock_list_response
+            mock_client.post.side_effect = [mock_fail_response1, mock_fail_response2]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(models, ["custom", "verify", "--all"])
+            assert "[FAIL]" in result.output
+            assert "Model unavailable" in result.output
+            assert result.exit_code == 0
+
+    def test_custom_verify_all_retry_max_completion_tokens_200_error(self, runner, mock_env):
+        """Test retry when max_tokens error comes via 200 response with error body."""
+        mock_list_response = MagicMock()
+        mock_list_response.status_code = 200
+        mock_list_response.json.return_value = {"items": [{"id": "o1-model"}], "total": 1}
+        mock_list_response.raise_for_status = MagicMock()
+
+        mock_fail_response = MagicMock()
+        mock_fail_response.status_code = 200
+        mock_fail_response.text = '{"error": {"message": "Unsupported parameter: \'max_tokens\' is not supported with this model. Use \'max_completion_tokens\' instead."}}'
+
+        mock_success_response = MagicMock()
+        mock_success_response.status_code = 200
+        mock_success_response.text = '{"choices": [{"message": {"content": "Hi"}}]}'
+
+        with patch("open_webui_admin.models.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.return_value = mock_list_response
+            mock_client.post.side_effect = [mock_fail_response, mock_success_response]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(models, ["custom", "verify", "--all"])
+            assert "[OK]" in result.output
+            assert result.exit_code == 0
+
     def test_custom_verify_name(self, runner, mock_env):
         """Test models custom verify --name."""
+        mock_list_response = MagicMock()
+        mock_list_response.status_code = 200
+        mock_list_response.json.return_value = {"items": [{"id": "dada"}], "total": 1}
+        mock_list_response.raise_for_status = MagicMock()
+
         mock_verify_response = MagicMock()
         mock_verify_response.status_code = 200
         mock_verify_response.text = '{"choices": [{"message": {"content": "Hi"}}]}'
 
         with patch("open_webui_admin.models.get_client") as mock_get_client:
             mock_client = MagicMock()
+            mock_client.get.return_value = mock_list_response
             mock_client.post.return_value = mock_verify_response
             mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
             mock_get_client.return_value.__exit__ = MagicMock(return_value=False)

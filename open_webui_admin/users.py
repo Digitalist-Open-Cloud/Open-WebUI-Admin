@@ -2,6 +2,7 @@ import click
 import json
 import re
 from .client import get_client
+from .output import print_table, print_json
 
 
 @click.group("users")
@@ -33,15 +34,16 @@ def users_get(all_users, json_output, include_email, exclude_email):
             users = [u for u in users if not any(p.search(u.get("email", "")) for p in exclude_patterns)]
 
         if json_output:
-            click.echo(json.dumps({"users": users, "count": len(users)}, indent=2))
+            print_json({"users": users, "count": len(users)})
         else:
             if users:
-                for user in users:
-                    user_id = user.get("id", "")
-                    name = user.get("name", "")
-                    email = user.get("email", "")
-                    role = user.get("role", "")
-                    click.echo(f"{user_id} | {name} | {email} | {role}")
+                rows = [{"id": u.get("id", ""), "name": u.get("name", ""), "email": u.get("email", ""), "role": u.get("role", "")} for u in users]
+                print_table(
+                    rows,
+                    [("USER_ID", "id", 36), ("NAME", "name", 20), ("EMAIL", "email", 30), ("ROLE", "role", 5)],
+                    json_output=False,
+                    simple_output=False,
+                )
                 click.echo(f"\nTotal: {len(users)} users")
             else:
                 click.echo("No users found")

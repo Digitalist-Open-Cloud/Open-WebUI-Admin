@@ -9,7 +9,8 @@ Very much a work in progress, and everyone is welcome to contribute.
 Idea around this module is to use the existing API to simplify common tasks, checks etc.
 So you need to able to use the API and have an API key.
 
-Focus on this tool is verification.
+Focus on this tool is verification, if you want to work with the models etc.
+I recommend to use another tool, like [owui-cli](https://github.com/rndmcnlly/owui-cli).
 
 ## Commands Overview
 
@@ -57,6 +58,9 @@ Focus on this tool is verification.
 | `banners set --type <type> --content <text>` | Set a banner |
 | `banners set --dismissible` | Set a dismissible banner |
 | `banners clear` | Clear all banners |
+| `tika test` | Test Tika file processing integration |
+| `tika test --path <file>` | Test with a specific file |
+| `tika test --json` | Output test results as JSON |
 
 ## Installation
 
@@ -367,6 +371,49 @@ open-webui-admin banners clear
 Options for `--type`: `Info`, `Warning`, `Error`, `Success`
 
 Options for `--dismissible`: Flag (default: True)
+
+### tika
+
+Test Tika file processing integration by uploading a PDF and verifying the content extraction pipeline works end-to-end. If no file is specified, it looks for `test-artifacts/tika-test.pdf`:
+
+```bash
+open-webui-admin tika test
+# Output:
+# [1/4] Uploaded 'tika-test.pdf' -> id: abc123
+# [2/4] Processing complete (attempt 1)
+# [3/4] Retrieved content: 4253 chars
+
+# === Tika test: PASSED ===
+# File ID: abc123
+#   [OK] upload
+#   [OK] processing
+#   [OK] content
+#   [OK] verification
+```
+
+Test with a specific file:
+
+```bash
+open-webui-admin tika test --path /path/to/test.pdf
+```
+
+Output test results as JSON for scripting:
+
+```bash
+open-webui-admin tika test --json
+# Output:
+# {
+#   "result": "success",
+#   "file_id": "abc123",
+#   "steps": { ... }
+# }
+```
+
+The test performs 4 steps:
+1. **Upload** - Uploads the file with processing enabled via `/api/v1/files/`
+2. **Process** - Polls `/api/v1/files/{id}/process/status` (up to 10 attempts) waiting for completion
+3. **Retrieve** - Fetches extracted content from `/api/v1/files/{id}/data/content`
+4. **Verify** - Confirms extracted content is meaningful (>10 chars)
 
 ## Output Formats
 
