@@ -86,6 +86,27 @@ class TestConfigGet:
             assert result.exit_code == 0
 
 
+    def test_config_get_openai_ollama_404(self, runner, mock_env):
+        """OpenAI config with ollama endpoint returning 404."""
+        mock_openai_response = MagicMock()
+        mock_openai_response.json.return_value = {"OPENAI_API_BASE_URLS": ["http://test"], "OPENAI_API_KEYS": ["key"]}
+        mock_openai_response.raise_for_status = MagicMock()
+
+        mock_ollama_response = MagicMock()
+        mock_ollama_response.status_code = 404
+
+        with patch("open_webui_admin.config.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [mock_openai_response, mock_ollama_response]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(config, ["get", "--name", "openai"])
+            assert "OpenAI" in result.output
+            assert "(none)" in result.output or "none" in result.output.lower()
+            assert result.exit_code == 0
+
+
 class TestConfigExport:
     def test_config_export(self, runner, mock_env):
         """Test config export fetches from /api/v1/configs/export."""
@@ -101,4 +122,20 @@ class TestConfigExport:
 
             result = runner.invoke(config, ["export"])
             assert "default_models" in result.output
+            assert result.exit_code == 0
+
+    def test_config_export_json(self, runner, mock_env):
+        """Test config export --json outputs JSON."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"general": {"default_models": ["gpt-4o"]}}
+        mock_response.raise_for_status = MagicMock()
+
+        with patch("open_webui_admin.config.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.return_value = mock_response
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(config, ["export", "--json"])
+            assert '"default_models"' in result.output
             assert result.exit_code == 0

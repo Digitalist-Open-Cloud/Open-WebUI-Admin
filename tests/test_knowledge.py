@@ -39,6 +39,14 @@ class TestKnowledgeList:
         assert "kb1" in result.output
         assert "kb2" in result.output
 
+    def test_knowledge_list_simple(self, runner, mock_client):
+        mock_client.get.return_value.json.return_value = [
+            {"id": "kb1", "name": "Test KB 1"},
+        ]
+        result = runner.invoke(knowledge, ["list", "--simple"])
+        assert result.exit_code == 0
+        assert "kb1" in result.output
+
 
 class TestKnowledgeShow:
     def test_knowledge_show_not_found(self, runner, mock_client):
@@ -84,6 +92,15 @@ class TestKnowledgeFiles:
         assert result.exit_code == 0
         assert "file1" in result.output
         assert "test.pdf" in result.output
+
+    def test_knowledge_files_empty(self, runner, mock_client):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"items": []}
+        mock_client.get.return_value = mock_response
+        result = runner.invoke(knowledge, ["files", "kb1"])
+        assert result.exit_code == 0
+        assert "(none)" in result.output
 
 
 class TestKnowledgeCreate:
@@ -168,6 +185,22 @@ class TestKnowledgeAddFolder:
         assert result.exit_code == 0
         assert "Found 2 file(s)" in result.output
         assert "Uploaded" in result.output
+
+    def test_add_folder_upload_fails(self, runner, mock_client, tmp_path):
+        (tmp_path / "test1.pdf").write_text("pdf content")
+
+        mock_kb_response = MagicMock()
+        mock_kb_response.status_code = 200
+        mock_client.get.return_value = mock_kb_response
+
+        mock_upload_response = MagicMock()
+        mock_upload_response.raise_for_status.side_effect = Exception("upload error")
+        mock_client.post.return_value = mock_upload_response
+
+        result = runner.invoke(knowledge, ["add-folder", "kb1", str(tmp_path)])
+        assert result.exit_code == 0
+        assert "failed" in result.output
+        assert "Summary" in result.output
 
     def test_add_folder_pattern(self, runner, mock_client, tmp_path):
         # Create test files

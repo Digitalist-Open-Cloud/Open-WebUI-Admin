@@ -11,7 +11,7 @@ def runner():
 class TestVersion:
     def test_version(self, runner):
         result = runner.invoke(cli, ["--version"])
-        assert "0.1.0" in result.output
+        assert "0.1.1" in result.output
 
 
 class TestErrors:

@@ -40,6 +40,28 @@ class TestConnectionsVerify:
             assert "OpenAI" in result.output
             assert result.exit_code == 0
 
+    def test_connections_verify_openai_exception(self, runner, mock_env):
+        """OpenAI verify raises exception."""
+        mock_openai_config = MagicMock()
+        mock_openai_config.json.return_value = {"OPENAI_API_BASE_URLS": ["http://test"], "OPENAI_API_KEYS": ["key"]}
+        mock_openai_config.raise_for_status = MagicMock()
+
+        mock_ollama_config = MagicMock()
+        mock_ollama_config.json.return_value = {"ENABLE_OLLAMA_API": False, "OLLAMA_BASE_URLS": []}
+        mock_ollama_config.raise_for_status = MagicMock()
+
+        with patch("open_webui_admin.connections.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [mock_openai_config, mock_ollama_config]
+            mock_client.post.side_effect = Exception("connection error")
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(connections, ["verify"])
+            assert "FAIL" in result.output
+            assert "connection error" in result.output
+            assert result.exit_code == 0
+
     def test_connections_verify_openai_fail(self, runner, mock_env):
         mock_openai_config = MagicMock()
         mock_openai_config.json.return_value = {"OPENAI_API_BASE_URLS": ["http://test"], "OPENAI_API_KEYS": ["key"]}
@@ -84,6 +106,98 @@ class TestConnectionsVerify:
 
             result = runner.invoke(connections, ["verify"])
             assert "ollama" in result.output.lower()
+            assert result.exit_code == 0
+
+    def test_connections_verify_ollama_disabled(self, runner, mock_env):
+        """Ollama API is disabled."""
+        mock_openai_config = MagicMock()
+        mock_openai_config.json.return_value = {"OPENAI_API_BASE_URLS": [], "OPENAI_API_KEYS": []}
+        mock_openai_config.raise_for_status = MagicMock()
+
+        mock_ollama_config = MagicMock()
+        mock_ollama_config.json.return_value = {"ENABLE_OLLAMA_API": False, "OLLAMA_BASE_URLS": ["http://ollama:11434"]}
+        mock_ollama_config.raise_for_status = MagicMock()
+
+        with patch("open_webui_admin.connections.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [mock_openai_config, mock_ollama_config]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(connections, ["verify"])
+            assert "Ollama API is disabled" in result.output
+            assert result.exit_code == 0
+
+    def test_connections_verify_ollama_no_urls(self, runner, mock_env):
+        """Ollama enabled but no URLs configured."""
+        mock_openai_config = MagicMock()
+        mock_openai_config.json.return_value = {"OPENAI_API_BASE_URLS": [], "OPENAI_API_KEYS": []}
+        mock_openai_config.raise_for_status = MagicMock()
+
+        mock_ollama_config = MagicMock()
+        mock_ollama_config.json.return_value = {"ENABLE_OLLAMA_API": True, "OLLAMA_BASE_URLS": []}
+        mock_ollama_config.raise_for_status = MagicMock()
+
+        with patch("open_webui_admin.connections.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [mock_openai_config, mock_ollama_config]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(connections, ["verify"])
+            assert "No Ollama connections" in result.output
+            assert result.exit_code == 0
+
+    def test_connections_verify_ollama_non_localhost(self, runner, mock_env):
+        """Ollama URL that is not localhost is verified."""
+        mock_openai_config = MagicMock()
+        mock_openai_config.json.return_value = {"OPENAI_API_BASE_URLS": [], "OPENAI_API_KEYS": []}
+        mock_openai_config.raise_for_status = MagicMock()
+
+        mock_ollama_config = MagicMock()
+        mock_ollama_config.json.return_value = {
+            "ENABLE_OLLAMA_API": True,
+            "OLLAMA_BASE_URLS": ["http://localhost:11434", "http://ollama-remote:11434"]
+        }
+        mock_ollama_config.raise_for_status = MagicMock()
+
+        mock_verify = MagicMock()
+        mock_verify.status_code = 200
+
+        with patch("open_webui_admin.connections.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [mock_openai_config, mock_ollama_config]
+            mock_client.post.return_value = mock_verify
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(connections, ["verify"])
+            assert "ollama-remote" in result.output
+            assert result.exit_code == 0
+
+    def test_connections_verify_ollama_exception(self, runner, mock_env):
+        """Ollama verify raises exception."""
+        mock_openai_config = MagicMock()
+        mock_openai_config.json.return_value = {"OPENAI_API_BASE_URLS": [], "OPENAI_API_KEYS": []}
+        mock_openai_config.raise_for_status = MagicMock()
+
+        mock_ollama_config = MagicMock()
+        mock_ollama_config.json.return_value = {
+            "ENABLE_OLLAMA_API": True,
+            "OLLAMA_BASE_URLS": ["http://ollama-remote:11434"]
+        }
+        mock_ollama_config.raise_for_status = MagicMock()
+
+        with patch("open_webui_admin.connections.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [mock_openai_config, mock_ollama_config]
+            mock_client.post.side_effect = Exception("ollama error")
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(connections, ["verify"])
+            assert "FAIL" in result.output
+            assert "ollama error" in result.output
             assert result.exit_code == 0
 
     def test_connections_verify_no_openai_keys(self, runner, mock_env):

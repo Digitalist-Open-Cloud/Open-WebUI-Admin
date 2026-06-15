@@ -118,6 +118,25 @@ class TestTikaTest:
         assert "Tika test: FAILED" in result.output
         assert "upload" in result.output.lower()
 
+    def test_tika_test_no_default_file_json(self, mock_client, monkeypatch):
+        import os
+        monkeypatch.setattr(os.path, "exists", lambda path: False)
+
+        from open_webui_admin.tika import tika
+        runner = CliRunner()
+        result = runner.invoke(tika, ["test", "--json"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["result"] == "error"
+
+    def test_tika_test_file_not_found_json(self, mock_client):
+        from open_webui_admin.tika import tika
+        runner = CliRunner()
+        result = runner.invoke(tika, ["test", "--path", "/nonexistent/file.pdf", "--json"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["result"] == "error"
+
     def test_tika_test_processing_fails(self, mock_client, tmp_path):
         test_pdf = tmp_path / "tika-test.pdf"
         test_pdf.write_bytes(b"%PDF-1.4")
@@ -138,3 +157,96 @@ class TestTikaTest:
 
         assert result.exit_code == 0
         assert "Tika test: FAILED" in result.output
+
+    def test_tika_test_processing_exception(self, mock_client, tmp_path):
+        test_pdf = tmp_path / "tika-test.pdf"
+        test_pdf.write_bytes(b"%PDF-1.4")
+
+        upload_resp = MagicMock()
+        upload_resp.status_code = 200
+        upload_resp.json.return_value = {"id": "f1"}
+        mock_client.post.return_value = upload_resp
+
+        status_resp = MagicMock()
+        status_resp.status_code = 200
+        status_resp.json.side_effect = Exception("status check failed")
+        mock_client.get.return_value = status_resp
+
+        from open_webui_admin.tika import tika
+        runner = CliRunner()
+        result = runner.invoke(tika, ["test", "--path", str(test_pdf)])
+
+        assert result.exit_code == 0
+        assert "Tika test: FAILED" in result.output
+
+    def test_tika_test_content_retrieval_fails(self, mock_client, tmp_path):
+        test_pdf = tmp_path / "tika-test.pdf"
+        test_pdf.write_bytes(b"%PDF-1.4")
+
+        upload_resp = MagicMock()
+        upload_resp.status_code = 200
+        upload_resp.json.return_value = {"id": "f1"}
+        mock_client.post.return_value = upload_resp
+
+        status_resp = MagicMock()
+        status_resp.status_code = 200
+        status_resp.json.return_value = {"status": "success"}
+        status_resp.raise_for_status = MagicMock()
+
+        content_resp = MagicMock()
+        content_resp.status_code = 500
+        content_resp.raise_for_status.side_effect = Exception("content retrieval failed")
+
+        mock_client.get.side_effect = [status_resp, content_resp]
+
+        from open_webui_admin.tika import tika
+        runner = CliRunner()
+        result = runner.invoke(tika, ["test", "--path", str(test_pdf)])
+
+        assert result.exit_code == 0
+        assert "Tika test: FAILED" in result.output
+
+    def test_tika_test_short_content(self, mock_client, tmp_path):
+        test_pdf = tmp_path / "tika-test.pdf"
+        test_pdf.write_bytes(b"%PDF-1.4")
+
+        upload_resp = MagicMock()
+        upload_resp.status_code = 200
+        upload_resp.json.return_value = {"id": "f1"}
+        mock_client.post.return_value = upload_resp
+
+        status_resp = MagicMock()
+        status_resp.status_code = 200
+        status_resp.json.return_value = {"status": "success"}
+        status_resp.raise_for_status = MagicMock()
+
+        content_resp = MagicMock()
+        content_resp.status_code = 200
+        content_resp.text = "short"
+        mock_client.get.side_effect = [status_resp, content_resp]
+
+        from open_webui_admin.tika import tika
+        runner = CliRunner()
+        result = runner.invoke(tika, ["test", "--path", str(test_pdf)])
+
+        assert result.exit_code == 0
+        assert "Tika test: FAILED" in result.output
+        assert "too short" in result.output
+
+    def test_tika_test_upload_fails_json(self, mock_client, tmp_path):
+        test_pdf = tmp_path / "tika-test.pdf"
+        test_pdf.write_bytes(b"%PDF-1.4")
+
+        upload_resp = MagicMock()
+        upload_resp.status_code = 500
+        upload_resp.raise_for_status.side_effect = Exception("upload failed")
+        mock_client.post.return_value = upload_resp
+
+        from open_webui_admin.tika import tika
+        runner = CliRunner()
+        result = runner.invoke(tika, ["test", "--path", str(test_pdf), "--json"])
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["result"] == "fail"
+        assert "upload" in data["steps"]
