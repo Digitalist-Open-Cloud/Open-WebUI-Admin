@@ -197,3 +197,30 @@ class TestUsersGet:
             assert len(output_data["users"]) == 1
             assert output_data["users"][0]["email"] == "bob@test.com"
             assert result.exit_code == 0
+
+    def test_users_get_until(self, runner, mock_env):
+        """Test users get --all --until excludes users registered after the date."""
+        from datetime import datetime
+        all_resp = MagicMock()
+        all_resp.json.return_value = {"users": [
+            {"id": "u1", "name": "Old", "email": "old@test.com", "role": "user"},
+            {"id": "u2", "name": "New", "email": "new@test.com", "role": "user"},
+        ]}
+        page1 = MagicMock()
+        page1.json.return_value = {"users": [
+            {"id": "u1", "created_at": int(datetime(2026, 8, 31, 23, 0).timestamp())},
+            {"id": "u2", "created_at": int(datetime(2026, 9, 1, 0, 30).timestamp())},
+        ]}
+        empty = MagicMock()
+        empty.json.return_value = {"users": []}
+
+        with patch("open_webui_admin.users.get_client") as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get.side_effect = [all_resp, page1, empty]
+            mock_get_client.return_value.__enter__ = MagicMock(return_value=mock_client)
+            mock_get_client.return_value.__exit__ = MagicMock(return_value=False)
+
+            result = runner.invoke(users, ["get", "--all", "--until", "2026-08-31"])
+            assert "Old" in result.output
+            assert "New" not in result.output
+            assert "Total: 1 users" in result.output

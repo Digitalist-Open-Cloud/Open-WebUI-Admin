@@ -39,6 +39,7 @@ I recommend to use another tool, like [owui-cli](https://github.com/rndmcnlly/ow
 | `users get --all --json` | List all users in JSON format |
 | `users get --include-email <regex>` | Include users matching email pattern |
 | `users get --exclude-email <regex>` | Exclude users matching email pattern |
+| `users get --until <YYYY-MM-DD>` | Only users registered on or before date |
 | `knowledge list` | List all knowledge bases |
 | `knowledge show <id>` | Show knowledge base details |
 | `knowledge files <id>` | List files in a knowledge base |
@@ -267,6 +268,13 @@ Exclude users matching email pattern (can be used multiple times):
 
 ```bash
 open-webui-admin users get --all --exclude-email "@spam.com"
+```
+
+Only users registered on or before a date (inclusive, local time; combines with email filters):
+
+```bash
+open-webui-admin users get --all --until 2026-08-31
+open-webui-admin users get --all --exclude-email "@example.com" --until 2026-08-31
 ```
 
 ### images
